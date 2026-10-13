@@ -73,6 +73,7 @@ Script: `scripts/startplasma-anland.sh`
 
 - `ANLAND_PLASMA_DEBUG=1`: stops redirecting standard output and standard error from `startplasma-wayland`, KWin, and the Plasma session, so startup logs are displayed directly in the current terminal. The default is `0`. This variable does not change Qt logging categories; for more detailed KWin logs, also set `QT_LOGGING_RULES`.
 - `ANLAND_AUDIO_DEBUG=1`: enables verbose logging for PipeWire, `pipewire-pulse`, and WirePlumber by setting the script’s `PIPEWIRE_DEBUG` and `WIREPLUMBER_DEBUG` variables. Logs are saved in the directory containing the Anland socket, usually `$TMPDIR/anland/` in Termux or `/tmp/anland/` in containers.
+- `ANLAND_SKIP_IMPLICIT_SYNC_WAIT`: defaults to `1` only when unset, allowing patched KWin to skip its extra implicit dma-buf synchronization wait. Existing values are preserved and exported; set `ANLAND_SKIP_IMPLICIT_SYNC_WAIT=0` before starting the script to retain that wait.
 
 For example, to display debug output from Plasma, KWin, and audio services at the same time:
 

@@ -60,6 +60,7 @@ Compatible APK 参照 Termux:X11 的独立版传输方式，不需要 F-Droid �
 
 - `ANLAND_PLASMA_DEBUG=1`：取消 `startplasma-wayland`、KWin 和 Plasma 会话的标准输出及标准错误重定向，使启动日志直接显示在当前终端。默认值为 `0`。该变量本身不会修改 Qt 日志分类；需要更详细的 KWin 日志时，应同时设置 `QT_LOGGING_RULES`。
 - `ANLAND_AUDIO_DEBUG=1`：为 PipeWire、`pipewire-pulse` 和 WirePlumber 启用详细日志，分别设置脚本内使用的 `PIPEWIRE_DEBUG` 和 `WIREPLUMBER_DEBUG`。日志保存在 Anland Socket 所在目录；默认通常为 Termux 中的 `$TMPDIR/anland/` 或容器中的 `/tmp/anland/`。
+- `ANLAND_SKIP_IMPLICIT_SYNC_WAIT`：仅在未设置时默认赋值为 `1`，允许带补丁的 KWin 跳过额外的 dma-buf 隐式同步等待。已有值会保留并导出；在启动脚本前设置 `ANLAND_SKIP_IMPLICIT_SYNC_WAIT=0` 可保留该等待。
 
 例如，同时显示 Plasma、KWin 和音频服务的调试输出：
 
