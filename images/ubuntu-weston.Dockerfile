@@ -18,6 +18,7 @@ RUN set -eux; \
         ca-certificates \
         curl \
         dbus-x11 \
+        libcanberra-pulse \
         libegl-mesa0 \
         libgbm1 \
         libgl1-mesa-dri \

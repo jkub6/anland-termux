@@ -22,6 +22,7 @@ RUN set -eux; \
         gnome-shell \
         gnome-shell-extension-manager \
         gnome-tweaks \
+        libcanberra-pulse \
         libegl-mesa0 \
         libgbm1 \
         libgl1-mesa-dri \

@@ -27,6 +27,7 @@ RUN set -eux; \
         kscreen \
         kwin-wayland \
         kwrite \
+        libcanberra-pulse \
         libegl-mesa0 \
         libgbm1 \
         libgl1-mesa-dri \
