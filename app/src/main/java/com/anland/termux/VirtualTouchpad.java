@@ -1,10 +1,8 @@
 package com.anland.termux;
 
 import android.content.Context;
-import android.graphics.Point;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
-import android.view.WindowManager;
 
 /**
  * Laptop-style virtual touchpad: interprets finger gestures on the surface as
@@ -13,8 +11,8 @@ import android.view.WindowManager;
  *
  * Self-contained state machine — the host routes non-mouse touches here (see
  * MainActivity.onTouchEvent) when touchpad mode is on, pushes the acceleration
- * preference via {@link #setAccelStrength}, and calls {@link #onSurfaceChanged}
- * when the surface is resized.
+ * preference via {@link #setAccelStrength}, and passes the output dimensions to
+ * {@link #onSurfaceChanged} when the surface or resolution changes.
  */
 public final class VirtualTouchpad {
 
@@ -47,8 +45,8 @@ public final class VirtualTouchpad {
     // 鼠标位置（相对模式）
     private float mouseX = 0;
     private float mouseY = 0;
-    private int screenWidth = 1920;
-    private int screenHeight = 1080;
+    private int screenWidth = 0;
+    private int screenHeight = 0;
 
     private float mouseAccelStrength = 1.0f; // 加速度强度，0.5 ~ 10.0
 
@@ -63,14 +61,8 @@ public final class VirtualTouchpad {
     private float accumulatedY = 0f;
     private boolean smoothInitialized = false;
 
-    private final Context context;
-
     VirtualTouchpad(Context context) {
-        this.context = context;
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        updateScreenSize();
-        mouseX = screenWidth / 2f;
-        mouseY = screenHeight / 2f;
     }
 
     /** Set the acceleration strength (clamped to 0.5 ~ 10.0). */
@@ -78,11 +70,15 @@ public final class VirtualTouchpad {
         mouseAccelStrength = Math.max(0.5f, Math.min(10.0f, strength));
     }
 
-    /** Re-read screen size and re-anchor the cursor after a surface resize. */
-    void onSurfaceChanged() {
-        updateScreenSize();
-        mouseX = clamp(mouseX, 0, screenWidth);
-        mouseY = clamp(mouseY, 0, screenHeight);
+    /** Keep the cursor within the producer's output, not the physical display. */
+    void onSurfaceChanged(int width, int height) {
+        if (width <= 0 || height <= 0)
+            return;
+        boolean firstSize = screenWidth == 0 || screenHeight == 0;
+        screenWidth = width;
+        screenHeight = height;
+        mouseX = firstSize ? screenWidth / 2f : clamp(mouseX, 0, screenWidth);
+        mouseY = firstSize ? screenHeight / 2f : clamp(mouseY, 0, screenHeight);
         resetSmoothing();
     }
 
@@ -336,15 +332,5 @@ public final class VirtualTouchpad {
 
     private float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    private void updateScreenSize() {
-        Point size = new Point();
-        WindowManager wm = context.getSystemService(WindowManager.class);
-        if (wm != null) {
-            wm.getDefaultDisplay().getSize(size);
-            screenWidth = size.x;
-            screenHeight = size.y;
-        }
     }
 }
