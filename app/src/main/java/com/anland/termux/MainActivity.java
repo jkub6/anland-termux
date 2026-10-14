@@ -249,6 +249,14 @@ public class MainActivity extends Activity
         customScreenWidth = prefs.getInt("custom_width", 0);
         customScreenHeight = prefs.getInt("custom_height", 0);
         Native.nativeSetCustomResolution(customW, customH);
+        // Match native's output size: custom resolution requires both dimensions.
+        // Physical display bounds include safe areas outside the desktop surface.
+        if (virtualTouchpad != null) {
+            boolean customResolution = customW > 0 && customH > 0;
+            virtualTouchpad.onSurfaceChanged(
+                customResolution ? customW : viewWidth,
+                customResolution ? customH : viewHeight);
+        }
     }
 
     private void registerCompatibleReceiver() {
@@ -1022,9 +1030,6 @@ public class MainActivity extends Activity
         applyMicState();
         applyAudioLatency();
         applyAudioKeepalive();
-
-        // ===== 更新屏幕尺寸并重置平滑状态 =====
-        virtualTouchpad.onSurfaceChanged();
     }
 
     @Override
