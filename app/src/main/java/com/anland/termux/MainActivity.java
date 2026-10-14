@@ -447,7 +447,7 @@ public class MainActivity extends Activity
         Notification.Builder builder = new Notification.Builder(this, NOTIFICATION_CHANNEL)
                 .setContentTitle(getString(R.string.notification_title))
                 .setContentText(getString(R.string.notification_text))
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.mipmap.ic_launcher)
                 .setOngoing(true)
                 .setShowWhen(false);
 
