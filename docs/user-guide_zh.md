@@ -134,7 +134,7 @@ echo $TERMUX_APP__APK_RELEASE
 > [!NOTE]
 >
 > * 建议额外安装 [Termux API](https://github.com/termux/termux-api)，它将提高在 Termux Native 和 PRoot 容器中运行桌面的稳定性。
-> * 在 Termux Native 中运行 KDE Plasma Wayland，还需额外安装修改版的 LayerShellQt：<https://github.com/lfdevs/termux-packages/releases/tag/layer-shell-qt_6.7.4-1>
+> * 在 Termux Native 中运行 KDE Plasma Wayland，还需额外安装修改版的 LayerShellQt：<https://github.com/lfdevs/termux-packages/releases/tag/layer-shell-qt_6.7.5-1>
 
 4. 在实际运行环境中安装 Freedreno (KGSL) 驱动。
 
@@ -200,7 +200,7 @@ echo $TERMUX_APP__APK_RELEASE
 3. 进入实际运行环境后，下载并运行以下一键脚本。
 
 > [!TIP]
-> 为了使音频服务正常运行，执行脚本前请先确认 PipeWire 已安装。如 Termux 中的 `pipewire` 包，Debian/Ubuntu 中的 `pipewire-audio` 和 `pipewire-libcamera` 包。
+> 为了使音频服务正常运行，执行脚本前请先确认 PipeWire 已安装。如 Termux 中的 `pipewire` 包，Debian/Ubuntu 中的 `pipewire-audio`、`pipewire-libcamera` 和 `libcanberra-pulse` 包。
 
    KDE Plasma：[startplasma-anland.sh](../scripts/startplasma-anland.sh)
 
@@ -247,6 +247,9 @@ echo $TERMUX_APP__APK_RELEASE
 >   # 对于 Chroot/LXC 容器：
 >   export ANLAND_DRM_DEVICE=/dev/dri/renderD128
 >   
+>   # 开启 DMA-BUF 同步优化
+>   export ANLAND_SKIP_IMPLICIT_SYNC_WAIT=1
+>   
 >   # 为搭载 Adreno GPU 的设备启用 Freedreno (KGSL) 驱动
 >   export MESA_LOADER_DRIVER_OVERRIDE=kgsl TURNIP_KMD=kgsl GALLIUM_DRIVER=freedreno FD_FORCE_KGSL=1 XWAYLAND_FORCE_KGSL_SURFACELESS=1
 >   
@@ -285,6 +288,9 @@ echo $TERMUX_APP__APK_RELEASE
 >   export XDG_RUNTIME_DIR=$TMPDIR/run
 >   export QT_QPA_PLATFORM=wayland XDG_CURRENT_DESKTOP=KDE XDG_SESSION_DESKTOP=KDE
 >   export ANLAND_SOCKET=$TMPDIR/anland/display_daemon.sock ANLAND=1 ANLAND_NO_DRM_DEVICE=1 EGL_PLATFORM=surfaceless
+>   
+>   # 开启 DMA-BUF 同步优化
+>   export ANLAND_SKIP_IMPLICIT_SYNC_WAIT=1
 >   
 >   # 为搭载 Adreno GPU 的设备启用 Freedreno (KGSL) 驱动
 >   export MESA_LOADER_DRIVER_OVERRIDE=kgsl TURNIP_KMD=kgsl GALLIUM_DRIVER=freedreno FD_FORCE_KGSL=1 XWAYLAND_FORCE_KGSL_SURFACELESS=1

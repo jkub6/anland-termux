@@ -143,7 +143,7 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
 > [!NOTE]
 >
 > * Installing [Termux:API](https://github.com/termux/termux-api) is recommended; it improves desktop stability in Termux Native and PRoot containers.
-> * When running KDE Plasma Wayland in Termux Native, you must also install the modified LayerShellQt package: <https://github.com/lfdevs/termux-packages/releases/tag/layer-shell-qt_6.7.4-1>
+> * When running KDE Plasma Wayland in Termux Native, you must also install the modified LayerShellQt package: <https://github.com/lfdevs/termux-packages/releases/tag/layer-shell-qt_6.7.5-1>
 
 4. Install the Freedreno (KGSL) driver in your runtime environment.
 
@@ -209,7 +209,7 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
 3. After entering the runtime environment, download and run the following helper scripts.
 
 > [!TIP]
-> To ensure that audio services work correctly, make sure PipeWire is installed before running either script. For example, install the `pipewire` package in Termux or the `pipewire-audio` and `pipewire-libcamera` packages in Debian/Ubuntu.
+> To ensure that audio services work correctly, make sure PipeWire is installed before running either script. For example, install the `pipewire` package in Termux or the `pipewire-audio`, `pipewire-libcamera` and `libcanberra-pulse` packages in Debian/Ubuntu.
 
    KDE Plasma: [startplasma-anland.sh](../scripts/startplasma-anland.sh)
 
@@ -256,6 +256,9 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
 >   # For Chroot/LXC container:
 >   export ANLAND_DRM_DEVICE=/dev/dri/renderD128
 >
+>   # Enable optimizations for DMA-BUF synchronization
+>   export ANLAND_SKIP_IMPLICIT_SYNC_WAIT=1
+>   
 >   # Enable Freedreno (KGSL) driver for devices with Adreno GPU
 >   export MESA_LOADER_DRIVER_OVERRIDE=kgsl TURNIP_KMD=kgsl GALLIUM_DRIVER=freedreno FD_FORCE_KGSL=1 XWAYLAND_FORCE_KGSL_SURFACELESS=1
 >
@@ -295,6 +298,9 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
 >   export QT_QPA_PLATFORM=wayland XDG_CURRENT_DESKTOP=KDE XDG_SESSION_DESKTOP=KDE
 >   export ANLAND_SOCKET=$TMPDIR/anland/display_daemon.sock ANLAND=1 ANLAND_NO_DRM_DEVICE=1 EGL_PLATFORM=surfaceless
 >
+>   # Enable optimizations for DMA-BUF synchronization
+>   export ANLAND_SKIP_IMPLICIT_SYNC_WAIT=1
+>   
 >   # Enable Freedreno (KGSL) driver for devices with Adreno GPU
 >   export MESA_LOADER_DRIVER_OVERRIDE=kgsl TURNIP_KMD=kgsl GALLIUM_DRIVER=freedreno FD_FORCE_KGSL=1 XWAYLAND_FORCE_KGSL_SURFACELESS=1
 >
