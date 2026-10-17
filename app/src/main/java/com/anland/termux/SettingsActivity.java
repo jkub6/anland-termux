@@ -55,6 +55,31 @@ public class SettingsActivity extends ComponentActivity {
         pickLayoutFile();
     }
 
+    /** Prevent a pending binding timer from overwriting restored preferences. */
+    public void cancelKeyBindingFromCompose() {
+        isListening = false;
+        if (listenTimer != null) {
+            listenTimer.cancel();
+            listenTimer = null;
+        }
+    }
+
+    public void onSettingsReplaced() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean("accessibility_key_intercept", false))
+            KeyInterceptor.launch(this);
+        else
+            KeyInterceptor.shutdown(false);
+        // Recreate remembered Compose preference state, preserving the current page.
+        recreate();
+    }
+
+    @Override
+    protected void onDestroy() {
+        cancelKeyBindingFromCompose();
+        super.onDestroy();
+    }
+
     // ============================================================
     // Key-binding capture logic
     // ============================================================

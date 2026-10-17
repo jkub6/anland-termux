@@ -5,13 +5,19 @@
 
 package com.anland.termux
 
+import android.content.ActivityNotFoundException
 import android.content.SharedPreferences
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Build
+import android.util.Log
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,6 +45,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -56,6 +63,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
@@ -72,6 +80,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -90,8 +99,15 @@ import androidx.core.view.WindowCompat
 import androidx.activity.compose.setContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
@@ -204,6 +220,9 @@ private fun SettingsApp(activity: SettingsActivity) {
     }
 
     MaterialTheme(colorScheme = colorScheme) {
+        // Own file operations above the lazy list so scrolling the card offscreen
+        // does not unregister its pickers or cancel a backup in progress.
+        val backupActions = settingsBackupActions(activity, prefs)
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (wide) {
                 LandscapeSettingsContent(
@@ -211,6 +230,7 @@ private fun SettingsApp(activity: SettingsActivity) {
                     prefs = prefs,
                     page = page,
                     detailPage = detailPage,
+                    backupActions = backupActions,
                     onPageSelected = openPage,
                     onBack = onBack
                 )
@@ -232,7 +252,7 @@ private fun SettingsApp(activity: SettingsActivity) {
                     if (targetPage == SettingsPage.HOME) {
                         HomeContent(onPageSelected = openPage)
                     } else {
-                        SettingsDetail(activity, prefs, targetPage, onBack = onBack)
+                        SettingsDetail(activity, prefs, targetPage, backupActions, onBack = onBack)
                     }
                 }
             }
@@ -246,6 +266,7 @@ private fun LandscapeSettingsContent(
     prefs: SharedPreferences,
     page: SettingsPage,
     detailPage: SettingsPage,
+    backupActions: SettingsBackupActions,
     onPageSelected: (SettingsPage) -> Unit,
     onBack: () -> Unit
 ) {
@@ -301,7 +322,7 @@ private fun LandscapeSettingsContent(
                     },
                     label = "settings-detail-transition"
                 ) { targetPage ->
-                    SettingsDetail(activity, prefs, targetPage, onBack = onBack)
+                    SettingsDetail(activity, prefs, targetPage, backupActions, onBack = onBack)
                 }
             }
         }
@@ -374,6 +395,7 @@ private fun SettingsDetail(
     activity: SettingsActivity,
     prefs: SharedPreferences,
     page: SettingsPage,
+    backupActions: SettingsBackupActions,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -402,7 +424,7 @@ private fun SettingsDetail(
                 SettingsPage.TOUCHPAD -> touchpadPage(prefs)
                 SettingsPage.CONNECTION -> connectionPage(activity, prefs)
                 SettingsPage.DISPLAY -> displayPage(activity, prefs)
-                SettingsPage.GENERAL -> generalPage(prefs)
+                SettingsPage.GENERAL -> generalPage(prefs, backupActions)
                 SettingsPage.HOME -> Unit
             }
         }
@@ -782,7 +804,9 @@ private fun scaleScreen(activity: SettingsActivity, factor: Float): Pair<Int, In
     return ((longSide * factor).roundToInt() and -2) to ((shortSide * factor).roundToInt() and -2)
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.generalPage(prefs: SharedPreferences) {
+private fun androidx.compose.foundation.lazy.LazyListScope.generalPage(
+    prefs: SharedPreferences, backupActions: SettingsBackupActions
+) {
     item {
         SettingCard(contentPadding = 0.dp, itemSpacing = 0.dp) {
             BooleanPreference(prefs, KEY_NOTIFICATION_ENABLED, true,
@@ -804,6 +828,143 @@ private fun androidx.compose.foundation.lazy.LazyListScope.generalPage(prefs: Sh
             actions.forEach { (action, title) -> UserActionSetting(prefs, action, title) }
         }
     }
+    item { SettingsBackupCard(backupActions) }
+}
+
+@Composable
+private fun settingsBackupActions(activity: SettingsActivity, prefs: SharedPreferences): SettingsBackupActions {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var pendingImport by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmReset by rememberSaveable { mutableStateOf(false) }
+
+    fun replaceSettings(uri: Uri?) {
+        scope.launch {
+            busy = true
+            try {
+                // Parse and validate everything before touching the preferences.
+                val settings = withContext(Dispatchers.IO) {
+                    if (uri == null) emptyMap<String, Any>() else {
+                        val input = activity.contentResolver.openInputStream(uri)
+                            ?: throw IOException("Could not open backup")
+                        input.use { SettingsBackup.readSettings(it) }
+                    }
+                }
+                activity.cancelKeyBindingFromCompose()
+                withContext(Dispatchers.IO) { SettingsBackup.replaceSettings(prefs, settings) }
+                Toast.makeText(activity,
+                    if (uri == null) R.string.settings_reset_success else R.string.settings_import_success,
+                    Toast.LENGTH_LONG).show()
+                activity.onSettingsReplaced()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("AnlandSettings", "Could not replace settings", error)
+                Toast.makeText(activity,
+                    if (uri == null) R.string.settings_reset_failed else R.string.settings_import_failed,
+                    Toast.LENGTH_LONG).show()
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) scope.launch {
+            busy = true
+            try {
+                withContext(Dispatchers.IO) {
+                    val bytes = SettingsBackup.exportSettings(prefs)
+                    val output = activity.contentResolver.openOutputStream(uri, "wt")
+                        ?: throw IOException("Could not create backup")
+                    output.use { it.write(bytes) }
+                }
+                Toast.makeText(activity, R.string.settings_export_success, Toast.LENGTH_SHORT).show()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("AnlandSettings", "Could not export settings", error)
+                Toast.makeText(activity, R.string.settings_export_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                busy = false
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        pendingImport = uri?.toString()
+    }
+
+    val exportBackup: () -> Unit = {
+        try {
+            val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
+            exportLauncher.launch("AnlandSettingsBackup-$timestamp.json")
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(activity, R.string.toast_no_picker, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val importBackup: () -> Unit = {
+        try {
+            importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(activity, R.string.toast_no_picker, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (pendingImport != null || confirmReset) {
+        val resetting = confirmReset
+        AlertDialog(
+            onDismissRequest = { pendingImport = null; confirmReset = false },
+            title = { Text(stringResource(if (resetting) R.string.settings_reset else R.string.settings_import)) },
+            text = { Text(stringResource(if (resetting) R.string.settings_reset_confirm else R.string.settings_import_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val uri = pendingImport?.let(Uri::parse)
+                    pendingImport = null
+                    confirmReset = false
+                    replaceSettings(if (resetting) null else uri)
+                }) {
+                    Text(stringResource(android.R.string.ok),
+                        color = if (resetting) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImport = null; confirmReset = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+    return SettingsBackupActions(!busy, exportBackup, importBackup, { confirmReset = true })
+}
+
+private class SettingsBackupActions(
+    val enabled: Boolean,
+    val exportBackup: () -> Unit,
+    val importBackup: () -> Unit,
+    val reset: () -> Unit
+)
+
+@Composable
+private fun SettingsBackupCard(actions: SettingsBackupActions) {
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        BackupAction(R.string.settings_export, enabled = actions.enabled, onClick = actions.exportBackup)
+        BackupAction(R.string.settings_import, enabled = actions.enabled, onClick = actions.importBackup)
+        BackupAction(R.string.settings_reset, enabled = actions.enabled, destructive = true, onClick = actions.reset)
+    }
+}
+
+@Composable
+private fun BackupAction(title: Int, enabled: Boolean, destructive: Boolean = false, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = {
+            Text(stringResource(title), color =
+                if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+        }
+    )
 }
 
 @Composable

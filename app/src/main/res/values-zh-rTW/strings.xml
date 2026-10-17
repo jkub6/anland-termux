@@ -25,7 +25,7 @@
     <string name="cat_connection_subtitle">socket、麥克風、相機與音訊</string>
     <string name="cat_display_subtitle">解析度、螢幕方向、螢幕缺角與子母畫面</string>
     <string name="cat_general_title">一般</string>
-    <string name="cat_general_subtitle">通知與使用者操作</string>
+    <string name="cat_general_subtitle">通知、使用者操作與備份</string>
 
     <!-- Bind key -->
     <string name="bind_key_button">綁定</string>
@@ -209,4 +209,17 @@
         <item>上下顛倒</item>
         <item>自動（觸控板）</item>
     </string-array>
+
+    <!-- Settings backup and reset -->
+    <string name="settings_export">匯出設定備份</string>
+    <string name="settings_import">匯入設定備份</string>
+    <string name="settings_reset">還原預設設定</string>
+    <string name="settings_import_confirm">是否使用此備份取代目前應用程式的全部設定？備份中未包含的設定將還原為預設值。連線設定需重新開啟應用程式後生效。Android 權限需個別授予。</string>
+    <string name="settings_reset_confirm">是否將應用程式的全部設定還原為預設值？</string>
+    <string name="settings_export_success">已匯出設定備份。</string>
+    <string name="settings_import_success">已匯入設定。請重新開啟應用程式以套用全部變更。</string>
+    <string name="settings_reset_success">已還原預設設定。請重新開啟應用程式以套用全部變更。</string>
+    <string name="settings_export_failed">無法匯出備份。請檢查儲存位置後重試。</string>
+    <string name="settings_import_failed">無法匯入設定。檔案可能無效、格式不受支援、過大或無法讀取。</string>
+    <string name="settings_reset_failed">無法還原預設設定，請重試。</string>
 </resources>
