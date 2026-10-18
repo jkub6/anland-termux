@@ -81,7 +81,7 @@ echo $TERMUX_APP__APK_RELEASE
 > # 启动守护程序：
 > killall anland > /dev/null 2>&1; anland > /dev/null 2>&1 &
 > # Compatible APK 需要额外运行 Binder 桥：
-> pkill -TERM -x anland-compatible; anland-compatible &
+> pkill -f anland-compatible; anland-compatible < /dev/null &
 > # 使用 Debian 13 的 KDE Plasma：
 > proot-distro login debian-anland --shared-tmp -- bash -c "startplasma-anland"
 > # 使用 Ubuntu 26.04 的 KDE Plasma：
@@ -184,7 +184,7 @@ echo $TERMUX_APP__APK_RELEASE
    ```sh
    killall anland > /dev/null 2>&1; anland > /dev/null 2>&1 &
    # Compatible APK 需要额外运行 Binder 桥：
-   pkill -TERM -x anland-compatible; anland-compatible &
+   pkill -f anland-compatible; anland-compatible < /dev/null &
    ```
 
    使用 compatible APK 时，请在显示应用和守护程序运行期间保持 Termux 中的 `anland-compatible` 进程运行。
