@@ -48,6 +48,8 @@ Compatible APK 参照 Termux:X11 的独立版传输方式，不需要 F-Droid �
 
 用户在 Termux 中运行 `anland-compatible [SOCKET_PATH]` 启动 bridge，方式与独立版 Termux:X11 启动其入口点相同。bridge 会持续运行并重复发布指定包的 Binder，使 Activity 重建后仍能获取新的重复 fd；不需要 F-Droid 签名密钥，也不需要 Termux 插件权限。
 
+R8 必须保留 `com.anland.termux.CompatibleBridge` 的类名及其 `public static void main(String[])` 入口，因为它由 `app_process` 从外部调用。调整构建优化时，需保留 `app/proguard-rules.pro` 中对应的显式规则；Android 组件和 JNI 的保留规则不覆盖此入口。
+
 ## 调试
 
 调试变量应在启动脚本前设置。下列示例既可用于 Termux 原生环境，也可在容器中使用；PRoot-Distro 必须通过 `--shared-tmp` 进入，Chroot 或 LXC 则应确保容器与 Termux 共享 Anland Socket 所在目录。

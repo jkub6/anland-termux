@@ -6,6 +6,12 @@
 # native_consumer.c calls these methods through GetMethodID on Clipboard.
 -keep class com.anland.termux.Clipboard { *; }
 
+# The Termux anland-compatible script invokes this entry point by its exact name
+# through app_process. It is not reachable from Android components in the APK.
+-keep class com.anland.termux.CompatibleBridge {
+    public static void main(java.lang.String[]);
+}
+
 # Keep native declarations in any future bridge class from being renamed or
 # removed when the corresponding C entry point is not visible to R8.
 -keepclasseswithmembernames,includedescriptorclasses class * {

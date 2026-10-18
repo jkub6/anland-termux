@@ -61,6 +61,11 @@ and republishes its package-targeted Binder so an Activity recreated later can
 obtain another duplicate fd; no F-Droid signing key or Termux plugin permission
 is involved.
 
+R8 must preserve the class name `com.anland.termux.CompatibleBridge` and its
+`public static void main(String[])` entry point, which is called externally by
+`app_process`. Keep the explicit rule in `app/proguard-rules.pro` when changing
+build optimization; Android component and JNI keep rules do not cover this entry.
+
 ## Debugging
 
 Set debugging variables before running the startup script. The examples below work in both the Termux native environment and containers. PRoot-Distro must be entered with `--shared-tmp`; Chroot and LXC containers must share the directory containing the Anland socket with Termux.
