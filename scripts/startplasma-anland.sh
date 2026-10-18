@@ -73,6 +73,97 @@ wait_for_socket() {
     [[ -S $socket_path ]]
 }
 
+process_matches_anland_socket() {
+    local proc_dir=$1
+    local socket_path=$2
+    local process_comm entry process_tmpdir
+    local -a process_args=()
+
+    [[ -r $proc_dir/comm && -r $proc_dir/cmdline ]] || return 1
+    read -r process_comm < "$proc_dir/comm" || return 1
+    [[ $process_comm == anland ]] || return 1
+
+    while IFS= read -r -d '' entry; do
+        process_args+=("$entry")
+    done < "$proc_dir/cmdline"
+
+    if [[ ${#process_args[@]} -eq 1 ]]; then
+        # A daemon without arguments uses its own TMPDIR, which may differ from
+        # this shell's environment. Do not guess when its environment is unreadable.
+        [[ -r $proc_dir/environ ]] || return 1
+        process_tmpdir=/data/data/com.termux/files/usr/tmp
+        while IFS= read -r -d '' entry; do
+            if [[ $entry == TMPDIR=* && -n ${entry#*=} ]]; then
+                process_tmpdir=${entry#*=}
+                break
+            fi
+        done < "$proc_dir/environ"
+        [[ $socket_path == "$process_tmpdir/anland/display_daemon.sock" ]]
+    elif [[ ${process_args[1]:-} == --socket ]]; then
+        [[ ${process_args[2]:-} == "$socket_path" ]]
+    else
+        [[ ${process_args[1]:-} == "$socket_path" ]]
+    fi
+}
+
+anland_daemon_uses_socket() {
+    local socket_path=$1
+    local proc_dir
+
+    for proc_dir in /proc/[0-9]*; do
+        process_matches_anland_socket "$proc_dir" "$socket_path" && return 0
+    done
+
+    return 1
+}
+
+stop_anland_daemon() {
+    local socket_path=$1
+    local proc_dir
+    local attempts=50
+
+    for proc_dir in /proc/[0-9]*; do
+        if process_matches_anland_socket "$proc_dir" "$socket_path"; then
+            kill "${proc_dir##*/}" > /dev/null 2>&1 || true
+        fi
+    done
+
+    while anland_daemon_uses_socket "$socket_path" && [[ $attempts -gt 0 ]]; do
+        sleep 0.1
+        attempts=$((attempts - 1))
+    done
+
+    if anland_daemon_uses_socket "$socket_path"; then
+        printf '%b\n' "${RED}The existing Anland daemon did not stop: $socket_path${NC}" >&2
+        return 1
+    fi
+}
+
+prepare_anland_daemon() {
+    local socket_path=$1
+    local anland_pid
+
+    if ! command -v anland > /dev/null 2>&1; then
+        printf '%b\n' "${RED}The anland command is missing. Install the Anland Termux package first.${NC}" >&2
+        return 1
+    fi
+    mkdir -p "${socket_path%/*}" || return 1
+
+    if [[ -S $socket_path ]] && anland_daemon_uses_socket "$socket_path"; then
+        printf '%b\n' "${GREEN}Reusing the existing Anland daemon at $socket_path.${NC}"
+        return 0
+    fi
+
+    stop_anland_daemon "$socket_path" || return 1
+    rm -f -- "$socket_path" || return 1
+    anland --socket "$socket_path" > "${socket_path%/*}/anland.log" 2>&1 &
+    anland_pid=$!
+    if ! wait_for_socket "$socket_path" || ! kill -0 "$anland_pid" 2> /dev/null; then
+        printf '%b\n' "${RED}The Anland daemon failed to create $socket_path. See ${socket_path%/*}/anland.log.${NC}" >&2
+        return 1
+    fi
+}
+
 process_matches_pipewire_runtime() {
     local proc_dir=$1
     local process_name=$2
@@ -214,19 +305,23 @@ start_termux_native() {
         return 1
     fi
 
+    if [[ -z ${TMPDIR:-} ]]; then
+        printf '%b\n' "${RED}TMPDIR is not set in the Termux environment.${NC}" >&2
+        return 1
+    fi
+
     mkdir -p "$TMPDIR/run"
     chown -R "$(id -un):$(id -gn)" "$TMPDIR/run"
     chmod -R 700 "$TMPDIR/run"
     mkdir -p "$TMPDIR/.X11-unix"
     chmod 1777 "$TMPDIR/.X11-unix"
 
-    killall anland > /dev/null 2>&1
-    anland > /dev/null 2>&1 &
+    export ANLAND_SOCKET=${ANLAND_SOCKET:-$TMPDIR/anland/display_daemon.sock}
+    prepare_anland_daemon "$ANLAND_SOCKET" || return 1
     stop_plasma
 
     set_common_environment
     export XDG_RUNTIME_DIR="$TMPDIR/run"
-    export ANLAND_SOCKET="$TMPDIR/anland/display_daemon.sock"
     export ANLAND_NO_DRM_DEVICE=1
     export EGL_PLATFORM=surfaceless
     enable_kgsl
