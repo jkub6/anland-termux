@@ -81,7 +81,7 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
 > # Start the daemon:
 > killall anland > /dev/null 2>&1; anland > /dev/null 2>&1 &
 > # The compatible APK also requires the Binder bridge:
-> pkill -TERM -x anland-compatible; anland-compatible &
+> pkill -f anland-compatible; anland-compatible < /dev/null &
 > # Debian 13 with KDE Plasma:
 > proot-distro login debian-anland --shared-tmp -- bash -c "startplasma-anland"
 > # Ubuntu 26.04 with KDE Plasma:
@@ -193,7 +193,7 @@ Or, to run Anland: Termux with GNOME in Termux Native using the GitHub Termux re
    ```sh
    killall anland > /dev/null 2>&1; anland > /dev/null 2>&1 &
    # The compatible APK also requires the Binder bridge:
-   pkill -TERM -x anland-compatible; anland-compatible &
+   pkill -f anland-compatible; anland-compatible < /dev/null &
    ```
 
    For the compatible APK, keep `anland-compatible` running in Termux while the display app and daemon are in use.
