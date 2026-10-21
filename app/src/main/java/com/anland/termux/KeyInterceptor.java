@@ -29,7 +29,7 @@ public class KeyInterceptor extends AccessibilityService {
 
     public static void launch(Context ctx) {
         try {
-            String service = "com.anland.termux/.KeyInterceptor";
+            String service = new android.content.ComponentName(ctx, KeyInterceptor.class).flattenToShortString();
             String enabled = Settings.Secure.getString(ctx.getContentResolver(),
                     Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
 

@@ -1,0 +1,28 @@
+--- a/os/utils.c
++++ b/os/utils.c
+@@ -1343,9 +1343,25 @@ Popen(const char *command, const char *type)
+         return NULL;
+     case 0:                    /* child */
++#ifdef __linux__
++    {
++        gid_t rgid, egid, sgid;
++        uid_t ruid, euid, suid;
++        /* Avoid unsupported no-op setid calls under PRoot. Do not skip
++         * privilege dropping if even the saved identity is different. */
++        if (getresgid(&rgid, &egid, &sgid) == -1 ||
++            getresuid(&ruid, &euid, &suid) == -1)
++            _exit(127);
++        if ((rgid != egid || rgid != sgid) && setgid(rgid) == -1)
++            _exit(127);
++        if ((ruid != euid || ruid != suid) && setuid(ruid) == -1)
++            _exit(127);
++    }
++#else
+         if (setgid(getgid()) == -1)
+             _exit(127);
+         if (setuid(getuid()) == -1)
+             _exit(127);
++#endif
+         if (*type == 'r') {
+             if (pdes[1] != 1) {
+                 /* stdout */

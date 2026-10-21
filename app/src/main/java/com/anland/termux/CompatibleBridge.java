@@ -21,10 +21,10 @@ import java.lang.reflect.Method;
  * Binder which lets the Android app duplicate that connected socket fd.
  */
 public final class CompatibleBridge {
-    public static final String ACTION_START = "com.anland.termux.COMPATIBLE_BRIDGE_START";
+    public static final String ACTION_START = BuildConfig.APPLICATION_ID + ".COMPATIBLE_BRIDGE_START";
 
     private static final String TAG = "AnlandCompatibleBridge";
-    private static final String APPLICATION_ID = "com.anland.termux";
+    private static final String APPLICATION_ID = BuildConfig.APPLICATION_ID;
 
     private final Context context;
     private final BridgeBinder binder;

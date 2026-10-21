@@ -10,11 +10,20 @@ android {
 
     buildFeatures {
         buildConfig = true
+        resValues = true
         aidl = true
         compose = true
     }
 
     signingConfigs {
+        nixOnDroid {
+            // Use the main app's key in the workspace; retain standalone fork builds.
+            def sharedKey = rootProject.file("../../nix-on-droid-app/app/testkey_untrusted.jks")
+            storeFile = sharedKey.exists() ? sharedKey : rootProject.file("testkey_untrusted.jks")
+            keyAlias = "alias"
+            storePassword = "xrj45yWGLbsO7W0v"
+            keyPassword = "xrj45yWGLbsO7W0v"
+        }
         termuxGitHub {
             storeFile = rootProject.file("testkey_untrusted.jks")
             keyAlias = "alias"
@@ -29,6 +38,9 @@ android {
         targetSdk = 37
         versionCode = 10
         versionName = "5.13.4.1"
+        buildConfigField "String", "DEFAULT_SOCKET_PATH", '"/data/data/com.termux/files/usr/tmp/anland/display_daemon.sock"'
+        resValue "string", "application_id", "com.anland.termux"
+        manifestPlaceholders = [appLabel: "Anland Termux"]
 
         ndk {
             abiFilters "arm64-v8a"
@@ -43,12 +55,28 @@ android {
 
     flavorDimensions "transport"
     productFlavors {
+        nixOnDroid {
+            dimension "transport"
+            applicationId = "com.anland.nix"
+            // The first package to start a shared process determines Android's
+            // compatibility behavior. Match the host, including its ability to
+            // execute PRoot from app data and its legacy foreground service.
+            targetSdk = 28
+            versionNameSuffix "-nix"
+            signingConfig = signingConfigs.nixOnDroid
+            buildConfigField "boolean", "COMPATIBLE", "false"
+            buildConfigField "String", "DEFAULT_SOCKET_PATH", '"/data/data/com.termux.nix/files/usr/tmp/anland/display_daemon.sock"'
+            resValue "string", "application_id", "com.anland.nix"
+            manifestPlaceholders = [appLabel: "Anland Nix"]
+        }
         standard {
             dimension "transport"
+            signingConfig = signingConfigs.termuxGitHub
             buildConfigField "boolean", "COMPATIBLE", "false"
         }
         compatible {
             dimension "transport"
+            signingConfig = signingConfigs.termuxGitHub
             buildConfigField "boolean", "COMPATIBLE", "true"
             versionNameSuffix "-compatible"
         }
@@ -73,7 +101,8 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.termuxGitHub
+            // Flavor signing must win over the Android plugin's default debug key.
+            signingConfig = null
             optimization {
                 enable = true
             }
@@ -81,7 +110,6 @@ android {
                 "proguard-rules.pro"
         }
         release {
-            signingConfig = signingConfigs.termuxGitHub
             optimization {
                 enable = true
             }

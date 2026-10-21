@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="com.termux.nix">
+    <application>
+        <!-- Share Nix-on-Droid's actual process as well as its Linux UID. -->
+        <activity android:name=".MainActivity" android:process="com.termux.nix" />
+        <activity android:name=".SettingsActivity" android:process="com.termux.nix" />
+        <receiver android:name=".UserActionReceiver" android:process="com.termux.nix" />
+        <service android:name=".KeyInterceptor" android:process="com.termux.nix" />
+    </application>
+</manifest>

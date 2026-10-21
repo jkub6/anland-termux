@@ -98,6 +98,7 @@ static inline int anw_api_disconnect(ANativeWindow *w, int api)
 
 /* Hidden API function pointers, resolved via dlsym */
 typedef int (*pfn_ANativeWindow_setBufferCount)(ANativeWindow *, size_t);
+typedef int (*pfn_ANativeWindow_setUsage)(ANativeWindow *, uint64_t);
 typedef int (*pfn_ANativeWindow_query)(const ANativeWindow *, int, int *);
 typedef int (*pfn_ANativeWindow_dequeueBuffer)(ANativeWindow *, ANativeWindowBuffer **, int *fenceFd);
 typedef int (*pfn_ANativeWindow_queueBuffer)(ANativeWindow *, ANativeWindowBuffer *, int fenceFd);
@@ -105,6 +106,7 @@ typedef int (*pfn_ANativeWindow_cancelBuffer)(ANativeWindow *, ANativeWindowBuff
 
 struct anw_api {
     pfn_ANativeWindow_setBufferCount setBufferCount;
+    pfn_ANativeWindow_setUsage       setUsage;
     pfn_ANativeWindow_query          query;
     pfn_ANativeWindow_dequeueBuffer  dequeueBuffer;
     pfn_ANativeWindow_queueBuffer    queueBuffer;
@@ -118,12 +120,13 @@ static inline int anw_api_load(struct anw_api *api)
         return -1;
 
     api->setBufferCount = (pfn_ANativeWindow_setBufferCount) dlsym(lib, "ANativeWindow_setBufferCount");
+    api->setUsage       = (pfn_ANativeWindow_setUsage) dlsym(lib, "ANativeWindow_setUsage");
     api->query          = (pfn_ANativeWindow_query)          dlsym(lib, "ANativeWindow_query");
     api->dequeueBuffer  = (pfn_ANativeWindow_dequeueBuffer)  dlsym(lib, "ANativeWindow_dequeueBuffer");
     api->queueBuffer    = (pfn_ANativeWindow_queueBuffer)    dlsym(lib, "ANativeWindow_queueBuffer");
     api->cancelBuffer   = (pfn_ANativeWindow_cancelBuffer)   dlsym(lib, "ANativeWindow_cancelBuffer");
 
-    if (!api->setBufferCount || !api->query ||
+    if (!api->setBufferCount || !api->setUsage || !api->query ||
         !api->dequeueBuffer || !api->queueBuffer || !api->cancelBuffer)
         return -1;
 

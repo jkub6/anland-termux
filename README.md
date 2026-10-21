@@ -1,4 +1,6 @@
-# Anland: Termux
+# Anland: Termux / Nix-on-Droid
+
+This fork adds a `nixOnDroid` Android flavor and Nix packages for the display relay and a minimal Weston session. See [Nix-on-Droid setup](docs/nix-on-droid.md). The upstream Termux flavors remain available.
 
 **English** | [中文](README_zh.md)
 

@@ -1,6 +1,8 @@
 package com.anland.termux;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import androidx.core.content.ContextCompat;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.Notification;
@@ -86,7 +88,7 @@ public class MainActivity extends Activity
     // the AAudio playback stream while this window is in the foreground.
     private AudioManager mAudioManager;
     private AudioFocusRequest mAudioFocusRequest;
-    private static final String DEFAULT_SOCKET_PATH = "/data/data/com.termux/files/usr/tmp/anland/display_daemon.sock";
+    private static final String DEFAULT_SOCKET_PATH = BuildConfig.DEFAULT_SOCKET_PATH;
     private static final String KEY_ACCESSIBILITY_ENABLED = "accessibility_key_intercept";
     private static final String KEY_EXTRA_KEYS_ENABLED = "extra_keys_bar";
     private static final String KEY_AUTO_SHOW_EXTRA_KEYS = "auto_show_extra_keys";
@@ -264,10 +266,7 @@ public class MainActivity extends Activity
             return;
 
         IntentFilter filter = new IntentFilter(CompatibleBridge.ACTION_START);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            registerReceiver(compatibleBridgeReceiver, filter, Context.RECEIVER_EXPORTED);
-        else
-            registerReceiver(compatibleBridgeReceiver, filter);
+        ContextCompat.registerReceiver(this, compatibleBridgeReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
         compatibleReceiverRegistered = true;
     }
 
@@ -304,6 +303,12 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Match the legacy gesture behavior: keep the Linux session visible.
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, () -> {});
+        }
 
         setupMediaAudio();
         applyScreenOrientation();
@@ -1311,6 +1316,7 @@ public class MainActivity extends Activity
     // handling lives in onKeyDown(); this override simply prevents the
     // system from finishing the activity via gesture navigation.
     @Override
+    @SuppressLint("GestureBackNavigation") // Legacy Android <= 32; newer gestures use the callback above.
     public void onBackPressed() {
     }
 
@@ -1427,6 +1433,7 @@ public class MainActivity extends Activity
     }
 
     // Returns null when the event is not one of the configurable user actions.
+    @SuppressLint("GestureBackNavigation") // Physical/accessibility keys; gestures use OnBackInvokedDispatcher.
     private Boolean handleConfiguredUserAction(KeyEvent event) {
         String action;
         int keyCode = event.getKeyCode();

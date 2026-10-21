@@ -82,7 +82,8 @@ static struct consumer_state g_state = {
 /* Connection config, set from Java via nativeConfigure() and read on each
  * (re)connect in do_connect(). Guarded by cfg_lock. */
 static pthread_mutex_t cfg_lock = PTHREAD_MUTEX_INITIALIZER;
-static char cfg_socket_path[256] = "/data/data/com.termux/files/usr/tmp/anland/display_daemon.sock";
+// MainActivity supplies the flavor-specific default before connecting.
+static char cfg_socket_path[256] = "";
 static bool cfg_use_root = false;
 static bool cfg_use_compatible_bridge = false;
 static int cfg_compatible_fd = -1;
@@ -435,6 +436,17 @@ static int do_connect(struct consumer_state *s)
 
     ANativeWindow_setBuffersGeometry(win, s->screen_w, s->screen_h,
                                      AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+
+    /* We export these buffers as linear dma-bufs (modifier = 0). Merely
+     * connecting the CPU API does not set allocation usage, unlike
+     * ANativeWindow_lock. Request CPU-accessible buffers before dequeuing;
+     * GPU-only allocations can be tiled/compressed (observed on Pixel 10).
+     */
+    if (api.setUsage(win, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+                          AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN) != 0) {
+        LOGE("setUsage(CPU_READ/WRITE) failed");
+        return -1;
+    }
 
     int min_undequeued = 0;
     api.query(win, ANATIVEWINDOW_QUERY_MIN_UNDEQUEUED_BUFFERS, &min_undequeued);
