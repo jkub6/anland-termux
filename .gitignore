@@ -4,3 +4,5 @@ app/.gradle/
 app/.cxx/
 app/build/
 app/local.properties
+.kotlin/
+app/.kotlin/
